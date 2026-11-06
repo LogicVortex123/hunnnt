@@ -105,6 +105,9 @@ tr:last-child td { border-bottom: none; }
 .badge.s-SELECTED { background: var(--accent); color: var(--accent-text); }
 .badge.s-REJECTED, .badge.s-STALE { color: var(--muted); }
 .badge.s-NEEDS_HUMAN_REVIEW { color: var(--warn); }
+.badge.r-pursue { background: var(--ok); color: #fff; }
+.badge.r-skip { color: var(--bad); }
+.badge.r-needs_human { color: var(--warn); }
 
 .empty { text-align: center; padding: 48px 16px; background: var(--surface); border: 1px dashed var(--border); border-radius: var(--radius); }
 

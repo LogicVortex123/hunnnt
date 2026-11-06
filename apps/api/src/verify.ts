@@ -36,11 +36,19 @@ export function repoRisks(r: OpportunityRecord, ctx: RepoContext | undefined, no
   if (ctx?.crossPostedRepos && ctx.crossPostedRepos > 1) {
     risks.push(`Same bounty text cross-posted in ${ctx.crossPostedRepos} different repos (spam pattern)`);
   }
+  const prs = r.signals.linkedPRs;
+  if (prs?.merged) risks.push(`${prs.merged} linked PR(s) already merged: likely solved or awarded`);
+  if (prs && prs.open >= 3) risks.push(`${prs.open} open competing PRs`);
   if (!repo) return risks;
 
   const ageDays = (now - Date.parse(repo.createdAt)) / DAY;
-  if (repo.stars < 100 && repo.forks >= 3 * Math.max(repo.stars, 1)) {
+  // Algora-backed repos naturally attract forks from bounty hunters, so the ratio isn't a farm signal there.
+  if (r.reward.platform !== "algora" && repo.stars < 100 && repo.forks >= 3 * Math.max(repo.stars, 1)) {
     risks.push(`Forks far exceed stars (${repo.forks} forks / ${repo.stars} stars): typical of bounty farms`);
+  }
+  // Synthetic "bounty board" repos: many open bounties on a repo almost nobody uses.
+  if (ctx && ctx.issueCount >= 8 && repo.stars < 100) {
+    risks.push(`Bounty board repo: ${ctx.issueCount} open bounties on a ${repo.stars}-star repo (work may have no real users / payout unproven)`);
   }
   if (ageDays < 90) risks.push(`Repository is only ${Math.floor(ageDays)} days old`);
   if (usd >= 1000 && repo.stars < 100) risks.push(`$${usd.toLocaleString()} reward from a repo with ${repo.stars} stars`);
@@ -84,8 +92,11 @@ export function verify(r: OpportunityRecord, now = Date.now()): { checks: Check[
       note: `${r.signals.comments} comments${crowded ? " (likely many attempts already)" : ""}`,
     },
     {
-      id: "open_prs", label: "No competing PR merged", pass: null,
-      note: "Not checked automatically: review linked PRs on the issue.",
+      id: "open_prs", label: "No competing PR merged",
+      pass: r.signals.linkedPRs ? r.signals.linkedPRs.merged === 0 : null,
+      note: r.signals.linkedPRs
+        ? `${r.signals.linkedPRs.open} open · ${r.signals.linkedPRs.merged} merged · ${r.signals.linkedPRs.closed} closed linked PRs`
+        : "Not checked (needs GitHub auth)",
     },
   ];
 

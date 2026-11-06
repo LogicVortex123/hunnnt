@@ -3,10 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
-export function Actions({ id, status }: { id: string; status: string }) {
+export function Actions({ id, status, queued }: { id: string; status: string; queued: boolean }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
-  const [msg, setMsg] = useState<string | null>(null);
+  const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [, startTransition] = useTransition();
 
   async function call(kind: string, path: string, body?: object) {
@@ -19,10 +19,11 @@ export function Actions({ id, status }: { id: string; status: string }) {
         body: body ? JSON.stringify(body) : undefined,
       });
       const j = await r.json();
-      if (!r.ok) setMsg(j.research?.error ?? j.error ?? `HTTP ${r.status}`);
+      if (r.status === 202) setMsg({ text: j.message, ok: true });
+      else if (!r.ok) setMsg({ text: j.research?.error ?? j.error ?? `HTTP ${r.status}`, ok: false });
       startTransition(() => router.refresh());
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Request failed");
+      setMsg({ text: e instanceof Error ? e.message : "Request failed", ok: false });
     } finally {
       setBusy(null);
     }
@@ -30,8 +31,8 @@ export function Actions({ id, status }: { id: string; status: string }) {
 
   return (
     <div className="actions">
-      <button onClick={() => call("research", "research")} disabled={!!busy}>
-        {busy === "research" ? "Researching…" : "Research with Claude"}
+      <button onClick={() => call("research", "research")} disabled={!!busy || queued}>
+        {queued ? "Research queued" : busy === "research" ? "Requesting…" : "Request research"}
       </button>
       {status !== "SELECTED" && (
         <button className="primary" onClick={() => call("select", "decision", { decision: "select" })} disabled={!!busy}>
@@ -47,7 +48,7 @@ export function Actions({ id, status }: { id: string; status: string }) {
       <p className="muted small">
         Selecting is recorded locally only. Nothing is claimed or posted on GitHub.
       </p>
-      {msg && <p className="bad-text small">{msg}</p>}
+      {msg && <p className={`small ${msg.ok ? "ok-text" : "bad-text"}`}>{msg.text}</p>}
     </div>
   );
 }

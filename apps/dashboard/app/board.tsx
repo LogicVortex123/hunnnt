@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
-import { ago, money, STATUS_LABEL, type Opportunity } from "@/lib/api";
+import { ago, effortLabel, money, REC_LABEL, STATUS_LABEL, type Opportunity } from "@/lib/api";
 
 const TABS = [
   { id: "NEEDS_HUMAN_REVIEW", label: "Candidates" },
@@ -20,6 +20,7 @@ export function Board({ rows }: { rows: Opportunity[] }) {
   const [tab, setTab] = useState<string>("NEEDS_HUMAN_REVIEW");
   const [rewardOnly, setRewardOnly] = useState(true);
   const [hideRisky, setHideRisky] = useState(true);
+  const [quickOnly, setQuickOnly] = useState(true);
   const [query, setQuery] = useState("");
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<RunResult | null>(null);
@@ -38,10 +39,11 @@ export function Board({ rows }: { rows: Opportunity[] }) {
       (tab === "ALL" || r.status === tab) &&
       (!rewardOnly || r.reward.amountMinor !== null) &&
       (!hideRisky || !(r.risks?.length)) &&
+      (!quickOnly || r.classification?.effort?.doable_in_two_days === true) &&
       (!q || r.title.toLowerCase().includes(q) || r.source.repository.toLowerCase().includes(q) ||
         (r.classification?.category ?? "").includes(q)),
     );
-  }, [rows, tab, rewardOnly, hideRisky, query]);
+  }, [rows, tab, rewardOnly, hideRisky, quickOnly, query]);
 
   async function runDiscovery() {
     setRunning(true);
@@ -96,6 +98,9 @@ export function Board({ rows }: { rows: Opportunity[] }) {
             <input type="checkbox" checked={rewardOnly} onChange={(e) => setRewardOnly(e.target.checked)} /> Has amount
           </label>
           <label className="small row gap-s">
+            <input type="checkbox" checked={quickOnly} onChange={(e) => setQuickOnly(e.target.checked)} /> Doable in 1–2 days
+          </label>
+          <label className="small row gap-s">
             <input type="checkbox" checked={hideRisky} onChange={(e) => setHideRisky(e.target.checked)} /> Hide red flags
           </label>
         </div>
@@ -117,9 +122,10 @@ export function Board({ rows }: { rows: Opportunity[] }) {
                 <th>Bounty</th>
                 <th className="num">Reward</th>
                 <th>Category</th>
-                <th>Difficulty</th>
+                <th>Effort (JEV)</th>
                 <th className="num">Comments</th>
                 <th>Updated</th>
+                <th>Research</th>
                 <th>Status</th>
               </tr>
             </thead>
@@ -134,9 +140,10 @@ export function Board({ rows }: { rows: Opportunity[] }) {
                   </td>
                   <td className="num">{money(r)}</td>
                   <td>{r.classification?.category ?? "—"}</td>
-                  <td>{r.classification?.difficulty ?? "—"}</td>
+                  <td className="small" style={{ whiteSpace: "nowrap" }}>{effortLabel(r)}</td>
                   <td className="num">{r.signals.comments}</td>
                   <td className="small">{ago(r.signals.issueUpdatedAt)}</td>
+                  <td>{r.researchRecommendation ? <span className={`badge r-${r.researchRecommendation}`}>{REC_LABEL[r.researchRecommendation]}</span> : <span className="muted small">—</span>}</td>
                   <td><span className={`badge s-${r.status}`}>{STATUS_LABEL[r.status] ?? r.status}</span></td>
                 </tr>
               ))}

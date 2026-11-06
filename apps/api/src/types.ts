@@ -1,4 +1,7 @@
 import type { OpportunityStatus } from "@opportunityos/schemas/opportunity";
+import type { ResearchReport } from "@opportunityos/schemas/research";
+
+export type { ResearchReport };
 
 export type Status = (typeof OpportunityStatus.options)[number];
 export type FundingStatus = "CONFIRMED" | "ADVERTISED" | "UNKNOWN" | "NOT_FUNDED";
@@ -25,6 +28,13 @@ export interface Classification {
   relevance_score: number;
   priority: "low" | "medium" | "high";
   confidence: number;
+  effort?: {
+    hours: number;
+    bucket: "under_1_day" | "1_2_days" | "multi_day";
+    doable_in_two_days: boolean;
+    confidence: number;
+    reasons: string[];
+  };
   note: string;
 }
 
@@ -58,6 +68,7 @@ export interface OpportunityRecord {
     fundingStatus: FundingStatus;
     /** Where the advertised amount was read from (label / title / body). */
     evidence: string | null;
+    platform?: "algora" | null;
   };
   signals: {
     state: string;
@@ -65,6 +76,8 @@ export interface OpportunityRecord {
     comments: number;
     issueCreatedAt: string;
     issueUpdatedAt: string;
+    /** PRs cross-referencing the issue; null when not fetched. */
+    linkedPRs?: { open: number; merged: number; closed: number } | null;
   };
   repo: RepoInfo | null;
   /** Human-readable red flags from deterministic trust rules (bounty farms, implausible rewards…). */
@@ -72,7 +85,17 @@ export interface OpportunityRecord {
   classification: Classification | null;
   verification: { checks: Check[]; verifiedAt: string };
   score: number;
-  research: { status: "completed" | "failed"; at: string; output?: string; error?: string } | null;
+  research: {
+    status: "completed" | "failed";
+    at: string;
+    /** "claude-adapter" (API key) or "claude-code" (this repo's lead agent / its subagents). */
+    agent?: string;
+    output?: string;
+    report?: ResearchReport;
+    error?: string;
+  } | null;
+  /** Set when the user requests research; cleared implicitly by a newer report. */
+  researchRequestedAt?: string;
   status: Status;
   audit: AuditEvent[];
   createdAt: string;
