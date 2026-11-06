@@ -1,0 +1,14 @@
+**/node_modules
+**/dist
+**/.turbo
+**/.venv
+**/__pycache__
+.git
+.env
+.env.*
+!.env.example
+*.pem
+firebase-service-account*.json
+workspaces
+logs
+data

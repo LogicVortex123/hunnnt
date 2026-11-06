@@ -1,0 +1,40 @@
+services:
+  jev:
+    build:
+      context: ../../agents/jev
+      dockerfile: Dockerfile
+    container_name: opportunity-jev
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8100:8100"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8100/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: ["ALL"]
+    tmpfs: ["/tmp"]
+
+  claude:
+    build:
+      context: ../../
+      dockerfile: agents/claude/Dockerfile
+    container_name: opportunity-claude
+    restart: unless-stopped
+    env_file:
+      - ../../.env
+    environment:
+      CLAUDE_PORT: 8200
+    ports:
+      - "127.0.0.1:8200:8200"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8200/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: ["ALL"]
