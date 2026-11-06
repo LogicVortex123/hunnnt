@@ -5,6 +5,7 @@
   "packageManager": "pnpm@9.15.0",
   "scripts": {
     "dev": "turbo run dev --parallel",
+    "dev:local": "turbo run dev --filter=@opportunityos/api --filter=@opportunityos/dashboard",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "test": "turbo run test"

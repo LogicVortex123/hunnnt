@@ -17,3 +17,7 @@ data/snapshots/
 *.log
 firebase-service-account*.json
 *.pem
+
+.next/
+next-env.d.ts
+*.tsbuildinfo
