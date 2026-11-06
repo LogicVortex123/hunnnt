@@ -32,6 +32,7 @@ async function classify(id: string, issue: GithubIssue): Promise<Classification 
         description: issue.body.slice(0, 4000),
         technologies: issue.labels.slice(0, 20),
         comments: issue.comments,
+        age_days: Math.max(0, Math.floor((Date.now() - Date.parse(issue.createdAt)) / 86_400_000)),
       }),
       signal: AbortSignal.timeout(5000),
     });
@@ -78,6 +79,7 @@ function toRecord(
       comments: issue.comments,
       issueCreatedAt: issue.createdAt,
       issueUpdatedAt: issue.updatedAt,
+      locked: issue.locked,
       linkedPRs: existing?.signals.linkedPRs ?? null,
     },
     repo: existing?.repo ?? null,

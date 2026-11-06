@@ -75,6 +75,15 @@ def estimate_effort(item: ClassificationRequest, difficulty: str) -> EffortEstim
         hours = max(2, hours - 2)
         reasons.append("includes repro/stack trace")
 
+    # Calibrated against researched bounties: long-unsolved, heavily-attempted issues hide complexity
+    # (e.g. "WearOS Support" keyword-estimated 16h, researched ~300h).
+    if item.age_days >= 365:
+        hours += 16 + 8 * min(item.age_days // 365, 4)
+        reasons.append(f"unsolved for {item.age_days // 365}+ year(s)")
+    if item.comments >= 50:
+        hours += 12
+        reasons.append(f"{item.comments} comments: many failed attempts suggest hidden complexity")
+
     if any(_has(labels, w) or _has(title, w) for w in ["good first issue", "easy", "beginner"]):
         hours = min(hours, 6)
         reasons.append("labelled beginner-friendly")

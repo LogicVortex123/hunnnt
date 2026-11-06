@@ -11,6 +11,7 @@ class ClassificationRequest(BaseModel):
     technologies: list[str] = Field(default_factory=list)
     # Optional activity signals (do not change effort, used only for context notes).
     comments: int = 0
+    age_days: int = 0
 
 
 class EffortEstimate(BaseModel):

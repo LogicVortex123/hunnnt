@@ -7,8 +7,12 @@ export interface Query {
   algora?: boolean;
 }
 
+const daysAgo = (d: number) => new Date(Date.now() - d * 86_400_000).toISOString().slice(0, 10);
+
 /** Search queries for publicly advertised GitHub issue bounties, most credible first. */
 export const QUERIES: Query[] = [
+  // Fresh bounties are the only ones realistically winnable in 1–2 days (before the crowd arrives).
+  { get q() { return `is:issue state:open commenter:app/algora-pbc no:assignee created:>${daysAgo(21)}`; }, pages: 2, algora: true },
   { q: "is:issue state:open commenter:app/algora-pbc no:assignee", pages: 3, algora: true },
   { q: 'is:issue state:open label:"💎 Bounty" no:assignee', pages: 1, algora: true },
   { q: "is:issue state:open label:bounty no:assignee", pages: 1 },
@@ -26,6 +30,7 @@ export interface GithubIssue {
   comments: number;
   createdAt: string;
   updatedAt: string;
+  locked: boolean;
   query: string;
   algora: boolean;
 }
@@ -42,6 +47,7 @@ interface SearchItem {
   comments: number;
   created_at: string;
   updated_at: string;
+  locked?: boolean;
   pull_request?: unknown;
 }
 
@@ -65,6 +71,20 @@ export async function ghGet<T>(path: string): Promise<T> {
   return (await res.json()) as T;
 }
 
+/** GET every page (follows the Link header), up to maxPages. */
+export async function ghGetAll<T>(path: string, maxPages = 10): Promise<T[]> {
+  const out: T[] = [];
+  let url: string | null = `https://api.github.com${path}`;
+  for (let page = 0; url && page < maxPages; page++) {
+    const res: Response = await fetch(url, { headers: headers(), signal: AbortSignal.timeout(15000) });
+    if (!res.ok) throw new Error(`GitHub GET ${path.split("?")[0]} failed (HTTP ${res.status})`);
+    out.push(...((await res.json()) as T[]));
+    const next: RegExpMatchArray | null | undefined = res.headers.get("link")?.match(/<([^>]+)>;\s*rel="next"/);
+    url = next ? next[1] : null;
+  }
+  return out;
+}
+
 export async function searchIssues(query: Query): Promise<GithubIssue[]> {
   const out: GithubIssue[] = [];
   for (let page = 1; page <= query.pages; page++) {
@@ -86,6 +106,7 @@ export async function searchIssues(query: Query): Promise<GithubIssue[]> {
         comments: i.comments,
         createdAt: i.created_at,
         updatedAt: i.updated_at,
+        locked: Boolean(i.locked),
         query: query.q,
         algora: Boolean(query.algora),
       });
@@ -139,11 +160,20 @@ export async function algoraReward(repo: string, n: number): Promise<{ amountMin
 
 /** Pull requests that cross-reference the issue (competing attempts / already solved). */
 export async function linkedPullRequests(repo: string, n: number): Promise<{ open: number; merged: number; closed: number }> {
-  const events = await ghGet<Array<{
+  // Busy issues have hundreds of timeline events; reading only page 1 badly undercounts competition.
+  const events = await ghGetAll<{
     event: string;
-    source?: { issue?: { state: string; pull_request?: { merged_at: string | null } } };
-  }>>(`/repos/${repo}/issues/${n}/timeline?per_page=100`);
-  const prs = events.filter((e) => e.event === "cross-referenced" && e.source?.issue?.pull_request);
+    source?: { issue?: { number: number; state: string; pull_request?: { merged_at: string | null }; repository?: { full_name: string } } };
+  }>(`/repos/${repo}/issues/${n}/timeline?per_page=100`);
+  const seen = new Set<string>();
+  const prs = events.filter((e) => {
+    const iss = e.source?.issue;
+    if (e.event !== "cross-referenced" || !iss?.pull_request) return false;
+    const key = `${iss.repository?.full_name ?? ""}#${iss.number}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
   const merged = prs.filter((e) => e.source!.issue!.pull_request!.merged_at).length;
   const open = prs.filter((e) => e.source!.issue!.state === "open").length;
   return { open, merged, closed: prs.length - open - merged };

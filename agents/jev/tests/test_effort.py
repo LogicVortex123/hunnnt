@@ -33,6 +33,11 @@ def test_checklist_adds_effort():
     assert effort("Fix validation", body).hours > effort("Fix validation").hours
 
 
+def test_old_contested_issue_is_multi_day():
+    e = classify(R(opportunity_id="t", title="WearOS Support", comments=191, age_days=1400)).effort
+    assert not e.doable_in_two_days
+
+
 def test_solidity_not_classified_frontend():
     r = classify(R(opportunity_id="t", title="Fix InterestRateModel in Solidity contract build"))
     assert r.category == "smart_contracts"

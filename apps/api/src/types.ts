@@ -76,6 +76,7 @@ export interface OpportunityRecord {
     comments: number;
     issueCreatedAt: string;
     issueUpdatedAt: string;
+    locked?: boolean;
     /** PRs cross-referencing the issue; null when not fetched. */
     linkedPRs?: { open: number; merged: number; closed: number } | null;
   };

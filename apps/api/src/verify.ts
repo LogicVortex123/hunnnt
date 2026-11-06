@@ -1,4 +1,5 @@
 import { config } from "./config.js";
+import { ENDED_PROGRAMS } from "./discovery/ended-programs.js";
 import type { Check, OpportunityRecord, Status } from "./types.js";
 
 const DAY = 86_400_000;
@@ -36,6 +37,12 @@ export function repoRisks(r: OpportunityRecord, ctx: RepoContext | undefined, no
   if (ctx?.crossPostedRepos && ctx.crossPostedRepos > 1) {
     risks.push(`Same bounty text cross-posted in ${ctx.crossPostedRepos} different repos (spam pattern)`);
   }
+  const ended = ENDED_PROGRAMS[r.source.repository.toLowerCase()];
+  if (ended) risks.push(`Bounty program ended (${ended.since}): ${ended.reason}`);
+  if (r.signals.locked) risks.push("Issue is locked: new attempts can't be posted");
+  const issueAgeDays = (now - Date.parse(r.signals.issueCreatedAt)) / DAY;
+  if (issueAgeDays > 365) risks.push(`Unsolved for ${(issueAgeDays / 365).toFixed(1)} years: usually harder than it looks`);
+  if (r.signals.comments > 80) risks.push(`Heavily contested: ${r.signals.comments} comments on the issue`);
   const prs = r.signals.linkedPRs;
   if (prs?.merged) risks.push(`${prs.merged} linked PR(s) already merged: likely solved or awarded`);
   if (prs && prs.open >= 3) risks.push(`${prs.open} open competing PRs`);
