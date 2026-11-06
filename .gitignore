@@ -21,3 +21,5 @@ firebase-service-account*.json
 .next/
 next-env.d.ts
 *.tsbuildinfo
+
+.playwright-mcp/
