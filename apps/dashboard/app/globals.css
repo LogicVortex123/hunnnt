@@ -109,6 +109,9 @@ tr:last-child td { border-bottom: none; }
 .badge.r-skip { color: var(--bad); }
 .badge.r-needs_human { color: var(--warn); }
 
+.showing { margin: 0 0 10px; }
+button.link { border: none; background: none; padding: 0; color: var(--accent); font-size: inherit; }
+button.link:hover { text-decoration: underline; }
 .empty { text-align: center; padding: 48px 16px; background: var(--surface); border: 1px dashed var(--border); border-radius: var(--radius); }
 
 .detail { display: flex; flex-direction: column; gap: 16px; }

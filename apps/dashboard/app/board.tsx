@@ -6,21 +6,22 @@ import { useMemo, useState, useTransition } from "react";
 import { ago, effortLabel, money, REC_LABEL, STATUS_LABEL, type Opportunity } from "@/lib/api";
 
 const TABS = [
+  { id: "ALL", label: "All" },
   { id: "NEEDS_HUMAN_REVIEW", label: "Candidates" },
   { id: "SELECTED", label: "Selected" },
   { id: "STALE", label: "Stale" },
   { id: "REJECTED", label: "Rejected" },
-  { id: "ALL", label: "All" },
 ] as const;
 
 interface RunResult { fetched: number; created: number; updated: number; errors: string[] }
 
 export function Board({ rows }: { rows: Opportunity[] }) {
   const router = useRouter();
-  const [tab, setTab] = useState<string>("NEEDS_HUMAN_REVIEW");
-  const [rewardOnly, setRewardOnly] = useState(true);
-  const [hideRisky, setHideRisky] = useState(true);
-  const [quickOnly, setQuickOnly] = useState(true);
+  // Everything visible by default; filters are opt-in so nothing is silently hidden.
+  const [tab, setTab] = useState<string>("ALL");
+  const [rewardOnly, setRewardOnly] = useState(false);
+  const [hideRisky, setHideRisky] = useState(false);
+  const [quickOnly, setQuickOnly] = useState(false);
   const [query, setQuery] = useState("");
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<RunResult | null>(null);
@@ -44,6 +45,16 @@ export function Board({ rows }: { rows: Opportunity[] }) {
         (r.classification?.category ?? "").includes(q)),
     );
   }, [rows, tab, rewardOnly, hideRisky, quickOnly, query]);
+
+  // How many rows in the current tab each filter would remove on its own.
+  const inTab = useMemo(() => rows.filter((r) => tab === "ALL" || r.status === tab), [rows, tab]);
+  const hiddenBy = {
+    amount: inTab.filter((r) => r.reward.amountMinor === null).length,
+    quick: inTab.filter((r) => r.classification?.effort?.doable_in_two_days !== true).length,
+    risky: inTab.filter((r) => r.risks?.length).length,
+  };
+  const filtersOn = rewardOnly || hideRisky || quickOnly || query.trim() !== "";
+  const clearFilters = () => { setRewardOnly(false); setHideRisky(false); setQuickOnly(false); setQuery(""); };
 
   async function runDiscovery() {
     setRunning(true);
@@ -96,15 +107,28 @@ export function Board({ rows }: { rows: Opportunity[] }) {
           <input className="search" placeholder="Filter by title, repo, category" value={query} onChange={(e) => setQuery(e.target.value)} />
           <label className="small row gap-s">
             <input type="checkbox" checked={rewardOnly} onChange={(e) => setRewardOnly(e.target.checked)} /> Has amount
+            <span className="muted">(−{hiddenBy.amount})</span>
           </label>
           <label className="small row gap-s">
             <input type="checkbox" checked={quickOnly} onChange={(e) => setQuickOnly(e.target.checked)} /> Doable in 1–2 days
+            <span className="muted">(−{hiddenBy.quick})</span>
           </label>
           <label className="small row gap-s">
             <input type="checkbox" checked={hideRisky} onChange={(e) => setHideRisky(e.target.checked)} /> Hide red flags
+            <span className="muted">(−{hiddenBy.risky})</span>
           </label>
         </div>
       </div>
+
+      {rows.length > 0 && (
+        <p className="small muted showing">
+          Showing <strong>{visible.length}</strong> of {inTab.length} bounties
+          {tab !== "ALL" && <> in this tab ({rows.length} total)</>}
+          {filtersOn && visible.length < inTab.length && (
+            <> · {inTab.length - visible.length} hidden by filters · <button className="link" onClick={clearFilters}>Clear filters</button></>
+          )}
+        </p>
+      )}
 
       {rows.length === 0 ? (
         <div className="empty">
@@ -112,7 +136,10 @@ export function Board({ rows }: { rows: Opportunity[] }) {
           <p className="muted">Press <strong>Find bounties</strong> to search GitHub.</p>
         </div>
       ) : visible.length === 0 ? (
-        <div className="empty"><p className="muted">Nothing matches these filters.</p></div>
+        <div className="empty">
+          <p className="muted">Nothing matches these filters.</p>
+          <button onClick={() => { clearFilters(); setTab("ALL"); }}>Show all {rows.length} bounties</button>
+        </div>
       ) : (
         <div className="table-wrap">
           <table>
@@ -136,7 +163,11 @@ export function Board({ rows }: { rows: Opportunity[] }) {
                   <td>
                     <Link href={`/o/${r.id}`} className="title">{r.title}</Link>
                     <div className="muted small mono">{r.source.repository}#{r.source.issueNumber}</div>
-                    {r.risks?.length > 0 && <div className="warn-text small">⚠ {r.risks[0]}</div>}
+                    {r.risks?.length > 0 && (
+                      <div className="warn-text small" title={r.risks.join("\n")}>
+                        ⚠ {r.risks[0]}{r.risks.length > 1 && ` (+${r.risks.length - 1} more)`}
+                      </div>
+                    )}
                   </td>
                   <td className="num">{money(r)}</td>
                   <td>{r.classification?.category ?? "—"}</td>
