@@ -1,7 +1,6 @@
 $ErrorActionPreference = "Continue"
 $targets = @(
-  @{ Name = "JEV"; Url = "http://localhost:8100/health" },
-  @{ Name = "Claude"; Url = "http://localhost:8200/health" }
+  @{ Name = "JEV"; Url = "http://localhost:8100/health" }
 )
 foreach ($target in $targets) {
   try {

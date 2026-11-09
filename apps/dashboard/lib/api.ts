@@ -51,7 +51,6 @@ export const REC_LABEL: Record<string, string> = { pursue: "Pursue", skip: "Skip
 export const SERVICES = [
   { id: "api", name: "API", url: API_URL },
   { id: "jev", name: "JEV classifier", url: process.env.JEV_SERVICE_URL ?? "http://127.0.0.1:8100" },
-  { id: "claude", name: "Claude adapter", url: process.env.CLAUDE_SERVICE_URL ?? "http://127.0.0.1:8200" },
 ] as const;
 
 export async function serviceHealth() {

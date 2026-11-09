@@ -10,17 +10,16 @@ Included:
 - pnpm/Turborepo monorepo
 - Express API health endpoint
 - FastAPI JEV service with a deterministic placeholder classifier
-- Claude API adapter service with a structured research endpoint
 - Firestore initialization helper
 - shared Zod schemas
-- Docker Compose for Claude and JEV
+- Docker Compose for JEV
 - Windows PowerShell bootstrap and node scripts
 - architecture and pipeline documentation
 
 Not yet implemented:
 - production GitHub discovery adapter
 - real JEV model integration/training
-- full Claude research prompts and evidence extraction
+- research adapter service (research reports are posted to `POST /api/v1/opportunities/:id/research/report`)
 - Cursor IDE automation (Cursor is treated as a local IDE/agent, not a headless Docker service)
 - transactional Firestore job leasing and worker recovery
 - complete dashboard, submission automation, CI, and payment-provider integrations
@@ -32,7 +31,6 @@ Not yet implemented:
 - Python 3.12+
 - Docker Desktop
 - Firebase project (optional for local health checks; required for Firestore persistence)
-- Anthropic API key (required to call Claude research endpoint)
 
 ## Quick start (Windows PowerShell)
 
@@ -40,12 +38,12 @@ Not yet implemented:
 corepack enable
 .\infrastructure\scripts\bootstrap.ps1
 Copy-Item .env.example .env
-# Edit .env and set ANTHROPIC_API_KEY and Firebase settings as needed.
+# Edit .env and set Firebase and GitHub settings as needed.
 docker compose -f infrastructure/docker/docker-compose.yml up --build -d
 corepack pnpm dev
 ```
 
-The API is at http://localhost:4000/health, JEV at http://localhost:8100/health, and Claude adapter at http://localhost:8200/health.
+The API is at http://localhost:4000/health and JEV at http://localhost:8100/health.
 
 ## Workspace commands
 
